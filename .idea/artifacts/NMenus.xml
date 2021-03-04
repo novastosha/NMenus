@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="NMenus">
+    <output-path>$PROJECT_DIR$/../../Minecraft Server for java/plugins</output-path>
+    <root id="archive" name="NMenus.jar">
+      <element id="module-output" name="NMenus" />
+    </root>
+  </artifact>
+</component>
