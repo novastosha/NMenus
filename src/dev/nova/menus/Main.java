@@ -1,6 +1,6 @@
 package dev.nova.menus;
 
-import dev.nova.menus.menus.manager.MenuManager;
+import dev.nova.menus.menu.manager.MenuManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
