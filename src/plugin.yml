@@ -3,5 +3,5 @@ version: 1.0
 main: dev.nova.menus.Main
 description: The plugin that makes it easier to make menus!
 commands:
-  test:
-    description: A test command!
+  nmenus:
+    description: Main command for the plugin!
