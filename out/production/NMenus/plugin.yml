@@ -1,0 +1,7 @@
+name: NMenus
+version: 1.0
+main: dev.nova.menus.Main
+description: The plugin that makes it easier to make menus!
+commands:
+  nmenus:
+    description: Main command for the plugin!
