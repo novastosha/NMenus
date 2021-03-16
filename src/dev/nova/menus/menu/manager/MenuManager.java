@@ -1,9 +1,7 @@
 package dev.nova.menus.menu.manager;
 
 import dev.nova.menus.Main;
-import dev.nova.menus.menu.Menu;
-import dev.nova.menus.menu.MenuBorderColor;
-import dev.nova.menus.menu.MenuSlot;
+import dev.nova.menus.menu.*;
 import dev.nova.menus.menu.actions.Action;
 import dev.nova.menus.menu.actions.ConsoleExecuteCommand;
 import dev.nova.menus.menu.actions.ExecuteCommandPlayer;
@@ -15,6 +13,7 @@ import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -53,6 +52,9 @@ public class MenuManager {
 
     public static void reloadMenus(CommandSender sender) {
         if (!(sender == null)) sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Reloading menus...");
+        for(Menu menu : MENUS){
+            Bukkit.getServer().getScheduler().cancelTask(menu.getRefreshTaskID());
+        }
         MENUS = new ArrayList<>();
         if (!(sender == null))
             sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Loaded: " + loadMenus(new File(Main.getPlugin(Main.class).getDataFolder() + "/menus")) + " menu(s)");
@@ -94,7 +96,7 @@ public class MenuManager {
             for (Menu menu : MENUS) {
                 if (menu.getCommandName().equals(command)) {
                     command = null;
-                    Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r contains a command that interferes with an other menu '" + menu.getcodeName() + "'");
+                    Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r contains a command that interferes with an other menu '" + menu.getCodeName() + "'");
                     return false;
                 }
             }
@@ -134,6 +136,7 @@ public class MenuManager {
 
         Material borderType = null;
         MenuBorderColor borderColor = null;
+        int borderRefresh = 1;
         if(configuration.contains("border")){
             try {
                 borderType = Material.getMaterial(configuration.getString("border").toUpperCase());
@@ -143,73 +146,31 @@ public class MenuManager {
             if(configuration.contains("border-color")) {
                 assert borderType != null;
                 if (borderType.equals(Material.GLASS)) {
-                    if(configuration.contains("border")) {
                         try {
-                            borderColor = MenuBorderColor.valueOf(configuration.getString("border-color"));
+                            borderColor = MenuBorderColor.valueOf(configuration.getString("border-color").toUpperCase());
 
                         } catch (IllegalArgumentException e) {
                             Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r contains a border color that is unknown");
                         }
-                    }
                     if(configuration.contains("border-refresh") && borderType.equals(Material.GLASS) && borderColor.equals(MenuBorderColor.RAINBOW)){
-
+                        borderRefresh = configuration.getInt("border-refresh");
                     }
                 }
             }
         }
 
-        List<MenuSlot> slotsArray = new ArrayList<>();
+        List<Slot> slotsArray = new ArrayList<>();
 
         if (configuration.contains("slots")) {
             ConfigurationSection slots = configuration.getConfigurationSection("slots");
+            int finalRows = rows;
+            Material finalBorderType = borderType;
             slots.getKeys(false).forEach(slot -> {
+
                 ConfigurationSection slotConfig = slots.getConfigurationSection(slot);
-                ItemStack item = new ItemStack(Material.getMaterial(slotConfig.getString("material")), slotConfig.getInt("amount"));
+                ItemStack item = null;
 
-                ItemMeta itemMeta = item.getItemMeta();
-                List<String> flags = new ArrayList<>();
-                if (slotConfig.contains("flags")) {
-                    flags = slotConfig.getStringList("flags");
-                }
-                for (String flag : flags) {
-                    flag = flag.toUpperCase();
-                    try {
-                        ItemFlag itemFlag = ItemFlag.valueOf(flag);
-                        itemMeta.addItemFlags(itemFlag);
-                    } catch (IllegalArgumentException e) {
-                        Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains a flag that is unknown (" + flag + ")");
-                    }
-                }
-                List<String> enchants = new ArrayList<>();
-                if (slotConfig.contains("enchants")) {
-                    enchants = slotConfig.getStringList("enchants");
-                }
-                for (String enchant : enchants) {
-                    enchant = enchant.replaceAll("\"", "");
-                    int level = 0;
-                    try {
-                        level = Integer.parseInt(stripNonDigits(enchant));
-                    } catch (NumberFormatException e) {
-                        Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " the enchant level is not correct!");
-                    }
-                    enchant = enchant.replaceAll("[0-9]", "");
-                    enchant = enchant.replaceAll("\\(", "");
-                    enchant = enchant.replaceAll("\\)", "");
-                    try {
-                        Enchantment enchantment = Enchantment.getByName(enchant);
-                        itemMeta.addEnchant(enchantment, level, true);
-
-                    } catch (IllegalArgumentException e) {
-                        Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains an enchant that is unknown (" + enchant + ")");
-                    }
-
-                }
-                if (configuration.contains("name")) {
-                    String name = slotConfig.getString("name");
-                    itemMeta.setDisplayName(name.replaceAll("\"", "").replaceAll("&", "§"));
-                }
-                item.setItemMeta(itemMeta);
-
+                if(!slotConfig.contains("animation")) item = makeSlot(slotConfig,slot,codeName);
                 boolean canBePicked = false;
                 if (slotConfig.contains("canBePicked")) {
                     canBePicked = slotConfig.getBoolean("canBePicked");
@@ -239,16 +200,122 @@ public class MenuManager {
                     });
                 }
 
-                slotsArray.add(new MenuSlot(Integer.parseInt(slot), item, actions, canBePicked));
+                String[] slotsTo = slot.split(",");
+                if(slotsTo.length != 1) {
+                    for (String slotS : slotsTo) {
+                        String[] between = slotS.split("-");
+                        int first = Integer.parseInt(between[0]);
+                        int second;
+                        try{
+                            second = Integer.parseInt(between[1]);
+                        }catch (ArrayIndexOutOfBoundsException e){
+                            second = Integer.parseInt(between[0]);
+                        }
+
+                        for (int i = Integer.parseInt(between[0]); i <= second; i++) {
+                            if(generateBorderSlotList(finalRows).contains(i) && finalBorderType != null) {
+                                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + i + " interferes with the border slots!");
+                                return;
+                            }
+                            if(!slotConfig.contains("animation")) slotsArray.add(new MenuSlot(i, item, actions, canBePicked));
+                            else {
+                                List<MenuSlot> items = new ArrayList<>();
+
+                                ConfigurationSection animationConfig = slotConfig.getConfigurationSection("animation.frames");
+                                boolean finalCanBePicked = canBePicked;
+                                animationConfig.getKeys(false).forEach(frame -> {
+                                    ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
+                                    items.add(new MenuSlot(-1,makeSlot(frameConfig,frame,codeName),actions, finalCanBePicked));
+                                });
+                                slotsArray.add(new MenuAnimatedSlot(i,actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
+                            }
+                        }
+                    }
+                }else if (slotsTo.length == 1){
+                    if(!slotConfig.contains("animation")){
+                        if(generateBorderSlotList(finalRows).contains(Integer.parseInt(slot)) && finalBorderType != null) {
+                            Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " interferes with the border slots!");
+                            return;
+                        }
+                        slotsArray.add(new MenuSlot(Integer.parseInt(slot), item, actions, canBePicked));
+                    }
+                    else{
+                        if(generateBorderSlotList(finalRows).contains(Integer.parseInt(slot)) && finalBorderType != null) {
+                            Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " interferes with the border slots!");
+                            return;
+                        }
+                        List<MenuSlot> items = new ArrayList<>();
+
+                        ConfigurationSection animationConfig = slotConfig.getConfigurationSection("animation.frames");
+                        boolean finalCanBePicked = canBePicked;
+                        animationConfig.getKeys(false).forEach(frame -> {
+                               ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
+                               items.add(new MenuSlot(-1,makeSlot(frameConfig,frame,codeName),actions, finalCanBePicked));
+                        });
+                        slotsArray.add(new MenuAnimatedSlot(Integer.parseInt(slot),actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
+                    }
+                }
             });
         }
-        Menu menu = new Menu(codeName, codeName, command, slotsArray, inventoryType, rows, shareable,configuration,file);
-        for (MenuSlot slot : slotsArray) {
-            slot.setMenu(menu);
+        Menu menu = new Menu(codeName, displayName, command, slotsArray, inventoryType, rows, shareable,configuration,file,borderColor,borderType,borderRefresh);
+        for (Slot slot : slotsArray) {
+
+            if(slot instanceof MenuSlot) ((MenuSlot)slot).setMenu(menu);
+            else ((MenuAnimatedSlot) slot).setMenu(menu);
         }
         MENUS.add(menu);
 
         return true;
+    }
+
+    private static ItemStack makeSlot(ConfigurationSection slotConfig,String slot, String codeName) {
+        ItemStack item = new ItemStack(Material.getMaterial(slotConfig.getString("material")), slotConfig.getInt("amount"));
+
+        ItemMeta itemMeta = item.getItemMeta();
+        List<String> flags = new ArrayList<>();
+        if (slotConfig.contains("flags")) {
+            flags = slotConfig.getStringList("flags");
+        }
+        for (String flag : flags) {
+            flag = flag.toUpperCase();
+            try {
+                ItemFlag itemFlag = ItemFlag.valueOf(flag);
+                itemMeta.addItemFlags(itemFlag);
+            } catch (IllegalArgumentException e) {
+                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains a flag that is unknown (" + flag + ")");
+            }
+        }
+        List<String> enchants = new ArrayList<>();
+        if (slotConfig.contains("enchants")) {
+            enchants = slotConfig.getStringList("enchants");
+        }
+        for (String enchant : enchants) {
+            enchant = enchant.replaceAll("\"", "");
+            int level = 0;
+            try {
+                level = Integer.parseInt(stripNonDigits(enchant));
+            } catch (NumberFormatException e) {
+                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " the enchant level is not correct!");
+            }
+            enchant = enchant.replaceAll("[0-9]", "");
+            enchant = enchant.replaceAll("\\(", "");
+            enchant = enchant.replaceAll("\\)", "");
+            try {
+                Enchantment enchantment = Enchantment.getByName(enchant);
+                itemMeta.addEnchant(enchantment, level, true);
+
+            } catch (IllegalArgumentException e) {
+                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains an enchant that is unknown (" + enchant + ")");
+            }
+
+        }
+        if (slotConfig.contains("name")) {
+            String name = slotConfig.getString("name");
+            itemMeta.setDisplayName(name.replaceAll("\"", "").replaceAll("&", "§"));
+        }
+        item.setItemMeta(itemMeta);
+
+        return item;
     }
 
     private static String stripNonDigits(
@@ -269,5 +336,29 @@ public class MenuManager {
             if (menu.getCodeName().equals(codeName)) return menu;
         }
         return null;
+    }
+
+    public static List<Integer> generateBorderSlotList(int rows) {
+        List<Integer> list = new ArrayList<>();
+        for (int i = 0; i <= 8; i++) {
+            list.add(i);
+        }
+
+        for (int i = rows*9 - 9; i < rows*9; i++) {
+            list.add(i);
+        }
+
+        int inRow = 9;
+        while(inRow < rows*9 - 9){
+            list.add(inRow);
+            inRow = inRow+9;
+        }
+
+        int inRow2 = 17;
+        while(inRow2 <= rows*9 - 9){
+            list.add(inRow2);
+            inRow2 = inRow2+9;
+        }
+        return list;
     }
 }

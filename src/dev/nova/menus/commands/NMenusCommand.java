@@ -2,7 +2,6 @@ package dev.nova.menus.commands;
 
 import dev.nova.menus.Main;
 import dev.nova.menus.menu.Menu;
-import dev.nova.menus.menu.editor.EditorManager;
 import dev.nova.menus.menu.manager.MenuManager;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -61,8 +60,6 @@ public class NMenusCommand implements CommandExecutor {
                         player.sendMessage(ChatColor.RED+"Cannot find that menu!");
                         return true;
                     }
-
-                    EditorManager.openEditMenu(menu,player);
                 }
                 if(args[0].equalsIgnoreCase("create")){
                     String codeName = args[1];

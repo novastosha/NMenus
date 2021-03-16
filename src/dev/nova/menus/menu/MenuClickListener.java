@@ -16,11 +16,18 @@ public class MenuClickListener implements Listener {
     public void onInventoryClick(InventoryClickEvent event){
         for(Menu menu : MenuManager.MENUS){
             if(menu.getInventories().contains(event.getClickedInventory())) {
-
-                    MenuSlot slot = menu.getSlotFromNumber(event.getSlot());
+                    if(menu.getBorderItem() != null){
+                        if(menu.getBorderSlotList().contains(event.getSlot())) event.setCancelled(true);
+                    }
+                    Slot slot = menu.getSlotFromNumber(event.getSlot());
                     if (slot != null) {
-                        if (!slot.canBePicked()) event.setCancelled(true);
-                        slot.executeActions((Player) event.getWhoClicked(), event.getClick());
+                        if (slot instanceof MenuSlot) {
+                            if (!(((MenuSlot)slot).canBePicked())) event.setCancelled(true);
+                            ((MenuSlot)slot).executeActions((Player) event.getWhoClicked(), event.getClick());
+                        }else{
+                            if (!(((MenuAnimatedSlot)slot).canBePicked())) event.setCancelled(true);
+                            ((MenuAnimatedSlot)slot).executeActions((Player) event.getWhoClicked(), event.getClick());
+                        }
                     }
             }
         }

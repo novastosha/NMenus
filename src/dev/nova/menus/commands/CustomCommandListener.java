@@ -10,12 +10,14 @@ public class CustomCommandListener implements Listener {
 
     @EventHandler
     public void onCommand(PlayerCommandPreprocessEvent event){
+        long start = System.currentTimeMillis();
         for(Menu menu : MenuManager.MENUS){
             if(menu.getCommandName() != null && event.getMessage().equals("/"+menu.getCommandName())){
                 menu.openInventory(event.getPlayer());
                 event.setCancelled(true);
             }
         }
+        event.getPlayer().sendMessage("Response: "+(System.currentTimeMillis()-start));
     }
 
 }

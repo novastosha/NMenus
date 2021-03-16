@@ -8,7 +8,7 @@ import org.bukkit.event.inventory.ClickType;
 import java.util.HashMap;
 import java.util.List;
 
-public class MenuSlot implements Cloneable {
+public class MenuSlot extends Slot implements Cloneable {
 
     private final int slotNumber;
     private final HashMap<Action,org.bukkit.event.inventory.ClickType> actions;
