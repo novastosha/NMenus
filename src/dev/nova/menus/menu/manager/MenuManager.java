@@ -3,17 +3,17 @@ package dev.nova.menus.menu.manager;
 import dev.nova.menus.Main;
 import dev.nova.menus.menu.*;
 import dev.nova.menus.menu.actions.Action;
-import dev.nova.menus.menu.actions.ConsoleExecuteCommand;
 import dev.nova.menus.menu.actions.ExecuteCommandPlayer;
+import dev.nova.menus.menu.actions.SendJSONMessage;
 import dev.nova.menus.menu.actions.SendMessage;
-import org.apache.commons.lang3.StringUtils;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Color;
 import org.bukkit.Material;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -23,7 +23,6 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -193,6 +192,9 @@ public class MenuManager {
                                 if(action.contains("send_message_")){
                                     actions.put(new SendMessage(actionConfig.getString(action).replaceAll("\"", "")),clickType);
                                 }
+                                if(action.contains("json_message_")){
+                                    actions.put(new SendJSONMessage(buildText(action,actionConfig.getConfigurationSection(action))),clickType);
+                                }
                             });
                         }catch (IllegalArgumentException e){
                             Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains a click type that is unknown ("+actionType+")");
@@ -223,9 +225,10 @@ public class MenuManager {
 
                                 ConfigurationSection animationConfig = slotConfig.getConfigurationSection("animation.frames");
                                 boolean finalCanBePicked = canBePicked;
+                                int finalI = i;
                                 animationConfig.getKeys(false).forEach(frame -> {
                                     ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
-                                    items.add(new MenuSlot(-1,makeSlot(frameConfig,frame,codeName),actions, finalCanBePicked));
+                                    items.add(new MenuSlot(-1,makeSlot(frameConfig, slot,codeName),actions, finalCanBePicked));
                                 });
                                 slotsArray.add(new MenuAnimatedSlot(i,actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
                             }
@@ -250,7 +253,7 @@ public class MenuManager {
                         boolean finalCanBePicked = canBePicked;
                         animationConfig.getKeys(false).forEach(frame -> {
                                ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
-                               items.add(new MenuSlot(-1,makeSlot(frameConfig,frame,codeName),actions, finalCanBePicked));
+                               items.add(new MenuSlot(-1,makeSlot(frameConfig,slot,codeName),actions, finalCanBePicked));
                         });
                         slotsArray.add(new MenuAnimatedSlot(Integer.parseInt(slot),actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
                     }
@@ -264,12 +267,32 @@ public class MenuManager {
             else ((MenuAnimatedSlot) slot).setMenu(menu);
         }
         MENUS.add(menu);
-
+        Bukkit.getConsoleSender().sendMessage("§7[§eNMenus]§7 Loaded the menu: §e"+codeName);
         return true;
     }
 
+    private static TextComponent buildText(String action, ConfigurationSection config) {
+        TextComponent textBuilder = new TextComponent(config.getString("message"));
+        if(config.contains("hover")){
+            if(config.contains("hover.show_text")){
+                textBuilder.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,new ComponentBuilder(config.getString("hover.show_text")).create()));
+            }
+        }else if(config.contains("click")){
+            if(config.contains("click.suggest_text")){
+                textBuilder.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,config.getString("click.suggest_text")));
+            }
+            if(config.contains("click.open_url")){
+                textBuilder.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL,config.getString("click.open_url")));
+            }
+            if(config.contains("click.run_command")){
+                textBuilder.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND,config.getString("click.run_command")));
+            }
+        }
+        return textBuilder;
+    }
+
     private static ItemStack makeSlot(ConfigurationSection slotConfig,String slot, String codeName) {
-        ItemStack item = new ItemStack(Material.getMaterial(slotConfig.getString("material")), slotConfig.getInt("amount"));
+        ItemStack item = new ItemStack(Material.getMaterial(slotConfig.getString("material").toUpperCase()), slotConfig.getInt("amount"));
 
         ItemMeta itemMeta = item.getItemMeta();
         List<String> flags = new ArrayList<>();
@@ -301,7 +324,7 @@ public class MenuManager {
             enchant = enchant.replaceAll("\\(", "");
             enchant = enchant.replaceAll("\\)", "");
             try {
-                Enchantment enchantment = Enchantment.getByName(enchant);
+                Enchantment enchantment = Enchantment.getByName(enchant.toUpperCase());
                 itemMeta.addEnchant(enchantment, level, true);
 
             } catch (IllegalArgumentException e) {
