@@ -1,6 +1,7 @@
 package dev.nova.menus.menu;
 
 import dev.nova.menus.Main;
+import dev.nova.menus.menu.anvil.AnvilGUI;
 import dev.nova.menus.menu.manager.MenuManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -10,12 +11,15 @@ import org.bukkit.craftbukkit.v1_12_R1.inventory.CraftInventory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 public class Menu {
 
@@ -27,6 +31,7 @@ public class Menu {
     private final InventoryType inventoryType;
     private final int rows;
     private final ArrayList<Inventory> inventories;
+    private final ArrayList<AnvilGUI.Builder> anvilsOpen;
     private ArrayList<Integer> slotTaskIDies;
     private final boolean shareable;
     private final YamlConfiguration configuration;
@@ -36,6 +41,8 @@ public class Menu {
     private final MenuBorderColor borderColor;
     private final List<Integer> borderSlotList;
     private int refreshTaskID;
+    private AnvilGUI.Builder anvil;
+    private AnvilGUI.Builder tempAnvil;
 
     public Menu(String codeName, String displayName, String commandName, List<Slot> menuSlots, InventoryType inventoryType, int rows, boolean shareable, YamlConfiguration configuration, File menuFile, MenuBorderColor borderColor, Material borderItem, int refresh) {
         this.inventories = new ArrayList<>();
@@ -43,6 +50,7 @@ public class Menu {
         this.codeName = codeName;
         this.shareable = shareable;
         this.inventoryType = inventoryType;
+        this.anvilsOpen = new ArrayList<>();
         this.commandName = commandName;
         this.borderColor = borderColor;
         this.slotTaskIDies = new ArrayList<>();
@@ -85,6 +93,10 @@ public class Menu {
                         ItemStack item;
                         if(borderItem.equals(Material.GLASS)) item = new ItemStack(Material.STAINED_GLASS_PANE,1,(byte) borderColor.getNumber());
                         else item = new ItemStack(borderItem,1);
+                        ItemMeta itemMeta = item.getItemMeta();
+                        itemMeta.setDisplayName(" ");
+                        itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                        item.setItemMeta(itemMeta);
                         inventory.setItem(i,item);
                     }
                 }
@@ -140,22 +152,42 @@ public class Menu {
         Inventory inventory = null;
         if (inventoryType == InventoryType.CHEST) {
             inventory = Bukkit.createInventory(null, rows * 9, displayName);
-        } else {
+        } else if(inventoryType != InventoryType.ANVIL){
             inventory = Bukkit.createInventory(null, inventoryType, displayName);
+        }else{
+            inventory = null;
+            this.anvil = new AnvilGUI.Builder();
+            anvil.title(displayName);
+            anvil.plugin(Main.getPlugin(Main.class));
         }
-        for (Slot menuSlot : slots) {
-            if(menuSlot instanceof MenuSlot) {
-                try {
-                    ((CraftInventory) inventory).setItem(((MenuSlot)menuSlot).getSlotNumber(), ((MenuSlot)menuSlot).getItem());
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + displayName + "§r has a slot that cannot be set! (" + e.getMessage() + ")");
+        if(inventory != null) {
+            for (Slot menuSlot : slots) {
+                if (menuSlot instanceof MenuSlot) {
+                    try {
+                        ((CraftInventory) inventory).setItem(((MenuSlot) menuSlot).getSlotNumber(), ((MenuSlot) menuSlot).getItem());
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + displayName + "§r has a slot that cannot be set! (" + e.getMessage() + ")");
 
+                    }
+                }
+            }
+        }else{
+            for (Slot menuSlot : slots) {
+                if (menuSlot instanceof MenuSlot) {
+                    if(((MenuSlot) menuSlot).getSlotNumber() == 0){
+                        anvil.itemLeft(((MenuSlot) menuSlot).getItem());
+                    }
+                    if(((MenuSlot) menuSlot).getSlotNumber() == 1){
+                        anvil.itemRight(((MenuSlot) menuSlot).getItem());
+                    }
                 }
             }
         }
-        inventories.add(inventory);
-        for (Slot menuSlot : slots){
-            if(menuSlot instanceof MenuAnimatedSlot){
+        if(inventory != null) inventories.add(inventory);
+        else anvilsOpen.add(anvil);
+        if(inventory != null) {
+            for (Slot menuSlot : slots) {
+                if (menuSlot instanceof MenuAnimatedSlot) {
                     slotTaskIDies.add(Bukkit.getServer().getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(Main.class), new Runnable() {
 
                         private int inFrame;
@@ -164,17 +196,49 @@ public class Menu {
                         public void run() {
 
                             MenuSlot slot = ((MenuAnimatedSlot) menuSlot).getSlots().get(inFrame);
-                            for(Inventory inventory1 : inventories){
-                                inventory1.setItem(((MenuAnimatedSlot) menuSlot).getSlotNumber(),slot.getItem());
+                            for (Inventory inventory1 : inventories) {
+                                inventory1.setItem(((MenuAnimatedSlot) menuSlot).getSlotNumber(), slot.getItem());
                             }
 
                             inFrame++;
 
-                            if(inFrame == ((MenuAnimatedSlot) menuSlot).getSlots().size()){
+                            if (inFrame == ((MenuAnimatedSlot) menuSlot).getSlots().size()) {
                                 inFrame = 0;
                             }
                         }
-                    },20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate(),20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate()));
+                    }, 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate(), 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate()));
+
+                }
+            }
+        }else{
+            for (Slot menuSlot : slots) {
+                if (menuSlot instanceof MenuAnimatedSlot) {
+                    slotTaskIDies.add(Bukkit.getServer().getScheduler().scheduleSyncRepeatingTask(Main.getPlugin(Main.class), new Runnable() {
+
+                        private int inFrame;
+
+                        @Override
+                        public void run() {
+
+                            MenuSlot slot = ((MenuAnimatedSlot) menuSlot).getSlots().get(inFrame);
+                            for (AnvilGUI.Builder inventory1 : anvilsOpen) {
+                                if(((MenuAnimatedSlot) menuSlot).getSlotNumber() == 0){
+                                    inventory1.itemLeft(slot.getItem());
+                                }
+                                if(((MenuAnimatedSlot) menuSlot).getSlotNumber() == 1){
+                                    inventory1.itemRight(slot.getItem());
+                                }
+                            }
+
+                            inFrame++;
+
+                            if (inFrame == ((MenuAnimatedSlot) menuSlot).getSlots().size()) {
+                                inFrame = 0;
+                            }
+                        }
+                    }, 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate(), 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate()));
+
+                }
             }
         }
         return inventory;
@@ -222,11 +286,18 @@ public class Menu {
 
     public void openInventory(Player player) {
         if (shareable) {
-            player.openInventory(getInventory());
+            if(inventoryType != InventoryType.ANVIL) player.openInventory(getInventory());
+            else anvil.open(player);
         } else {
-            Inventory inventory = copy(getInventory());
-            inventories.add(inventory);
-            player.openInventory(inventory);
+            if(inventoryType != InventoryType.ANVIL) {
+                Inventory inventory = copy(getInventory());
+                inventories.add(inventory);
+                player.openInventory(inventory);
+            }else{
+                copy(null);
+                tempAnvil.open(player);
+                this.tempAnvil = null;
+            }
         }
     }
 
@@ -236,6 +307,18 @@ public class Menu {
             case CHEST:
                 copied = Bukkit.createInventory(inventory.getHolder(), inventory.getSize(), inventory.getTitle());
                 break;
+            case ANVIL:
+                AnvilGUI.Builder anvilM = new AnvilGUI.Builder();
+                anvilM.title(displayName);
+                anvilM.plugin(Main.getPlugin(Main.class));
+                anvilsOpen.add(anvilM);
+                anvilM.onComplete(new BiFunction<Player, String, AnvilGUI.Response>() {
+                    @Override
+                    public AnvilGUI.Response apply(Player player, String s) {
+                        return AnvilGUI.Response.text("gg");
+                    }
+                });
+                this.tempAnvil = anvilM;
             default:
                 copied = Bukkit.createInventory(inventory.getHolder(), inventory.getType(), inventory.getTitle());
         }
