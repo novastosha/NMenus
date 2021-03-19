@@ -14,21 +14,23 @@ public class MenuClickListener implements Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event){
-        for(Menu menu : MenuManager.MENUS){
-            if(menu.getInventories().contains(event.getClickedInventory())) {
-                    if(menu.getBorderItem() != null){
-                        if(menu.getBorderSlotList().contains(event.getSlot())) event.setCancelled(true);
+        for(Menu menu : MenuManager.MENUS) {
+            if (menu.getInventoryType() != InventoryType.ANVIL) {
+                if (menu.getInventories().contains(event.getClickedInventory())) {
+                    if (menu.getBorderItem() != null) {
+                        if (menu.getBorderSlotList().contains(event.getSlot())) event.setCancelled(true);
                     }
                     Slot slot = menu.getSlotFromNumber(event.getSlot());
                     if (slot != null) {
                         if (slot instanceof MenuSlot) {
-                            if (!(((MenuSlot)slot).canBePicked())) event.setCancelled(true);
-                            ((MenuSlot)slot).executeActions((Player) event.getWhoClicked(), event.getClick());
-                        }else{
-                            if (!(((MenuAnimatedSlot)slot).canBePicked())) event.setCancelled(true);
-                            ((MenuAnimatedSlot)slot).executeActions((Player) event.getWhoClicked(), event.getClick());
+                            if (!(((MenuSlot) slot).canBePicked())) event.setCancelled(true);
+                            ((MenuSlot) slot).executeActions((Player) event.getWhoClicked(), event.getClick());
+                        } else {
+                            if (!(((MenuAnimatedSlot) slot).canBePicked())) event.setCancelled(true);
+                            ((MenuAnimatedSlot) slot).executeActions((Player) event.getWhoClicked(), event.getClick());
                         }
                     }
+                }
             }
         }
     }
