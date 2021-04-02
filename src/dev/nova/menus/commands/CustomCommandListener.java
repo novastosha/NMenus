@@ -11,9 +11,13 @@ public class CustomCommandListener implements Listener {
     @EventHandler
     public void onCommand(PlayerCommandPreprocessEvent event){
         for(Menu menu : MenuManager.MENUS){
-            if(menu.getCommandName() != null && event.getMessage().equals("/"+menu.getCommandName())){
-                menu.openInventory(event.getPlayer());
-                event.setCancelled(true);
+            if(menu.getCommandName() != null) {
+                for (String cmd : menu.getCommandName()) {
+                    if(event.getMessage().equals("/"+cmd)){
+                        menu.openInventory(event.getPlayer());
+                        event.setCancelled(true);
+                    }
+                }
             }
         }
     }
