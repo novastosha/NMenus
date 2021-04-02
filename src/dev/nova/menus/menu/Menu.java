@@ -7,7 +7,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.v1_12_R1.inventory.CraftInventory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
@@ -18,6 +17,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -27,11 +27,12 @@ public class Menu {
     private final String codeName;
     private final List<Slot> slots;
     private final Inventory inventory;
-    private final String commandName;
+    private final List<String> commandName;
     private final InventoryType inventoryType;
     private final int rows;
     private final ArrayList<Inventory> inventories;
     private final ArrayList<AnvilGUI.Builder> anvilsOpen;
+    private final boolean canPutItems;
     private ArrayList<Integer> slotTaskIDies;
     private final boolean shareable;
     private final YamlConfiguration configuration;
@@ -44,10 +45,11 @@ public class Menu {
     private AnvilGUI.Builder anvil;
     private AnvilGUI.Builder tempAnvil;
 
-    public Menu(String codeName, String displayName, String commandName, List<Slot> menuSlots, InventoryType inventoryType, int rows, boolean shareable, YamlConfiguration configuration, File menuFile, MenuBorderColor borderColor, Material borderItem, int refresh) {
+    public Menu(String codeName, String displayName, List<String> commandName, List<Slot> menuSlots, InventoryType inventoryType, int rows, boolean shareable, YamlConfiguration configuration, File menuFile, MenuBorderColor borderColor, Material borderItem, int refresh,boolean canPutItems) {
         this.inventories = new ArrayList<>();
         this.configuration = configuration;
         this.codeName = codeName;
+        this.canPutItems = canPutItems;
         this.shareable = shareable;
         this.inventoryType = inventoryType;
         this.anvilsOpen = new ArrayList<>();
@@ -74,6 +76,10 @@ public class Menu {
 
                             for (int i : borderSlotList) {
                                 ItemStack item = new ItemStack(Material.STAINED_GLASS_PANE,1,(byte) color.getNumber());
+                                ItemMeta itemMeta = item.getItemMeta();
+                                itemMeta.setDisplayName("§e                 ");
+                                itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                                item.setItemMeta(itemMeta);
                                 inventory.setItem(i,item);
                             }
                         }
@@ -84,7 +90,7 @@ public class Menu {
                             inColor = 0;
                         }
                     }
-                }, 20L * refresh, 20L * refresh);
+                }, 0L, 20L * refresh);
             }else{
                 for(Inventory inventory : inventories){
 
@@ -94,7 +100,7 @@ public class Menu {
                         if(borderItem.equals(Material.GLASS)) item = new ItemStack(Material.STAINED_GLASS_PANE,1,(byte) borderColor.getNumber());
                         else item = new ItemStack(borderItem,1);
                         ItemMeta itemMeta = item.getItemMeta();
-                        itemMeta.setDisplayName(" ");
+                        itemMeta.setDisplayName("§e                 ");
                         itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
                         item.setItemMeta(itemMeta);
                         inventory.setItem(i,item);
@@ -102,6 +108,10 @@ public class Menu {
                 }
             }
         }
+    }
+
+    public ArrayList<Integer> getSlotTaskIDies() {
+        return slotTaskIDies;
     }
 
     public List<Integer> getBorderSlotList() {
@@ -122,6 +132,10 @@ public class Menu {
 
     public MenuBorderColor getBorderColor() {
         return borderColor;
+    }
+
+    public boolean canPutItems() {
+        return canPutItems;
     }
 
     public File getMenuFile() {
@@ -164,7 +178,7 @@ public class Menu {
             for (Slot menuSlot : slots) {
                 if (menuSlot instanceof MenuSlot) {
                     try {
-                        ((CraftInventory) inventory).setItem(((MenuSlot) menuSlot).getSlotNumber(), ((MenuSlot) menuSlot).getItem());
+                        inventory.setItem(((MenuSlot) menuSlot).getSlotNumber(), ((MenuSlot) menuSlot).getItem());
                     } catch (ArrayIndexOutOfBoundsException e) {
                         Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + displayName + "§r has a slot that cannot be set! (" + e.getMessage() + ")");
 
@@ -206,7 +220,7 @@ public class Menu {
                                 inFrame = 0;
                             }
                         }
-                    }, 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate(), 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate()));
+                    }, 0L, 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate()));
 
                 }
             }
@@ -236,7 +250,7 @@ public class Menu {
                                 inFrame = 0;
                             }
                         }
-                    }, 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate(), 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate()));
+                    }, 0L, 20L * ((MenuAnimatedSlot) menuSlot).getRefreshRate()));
 
                 }
             }
@@ -268,7 +282,7 @@ public class Menu {
         return inventory;
     }
 
-    public String getCommandName() {
+    public List<String> getCommandName() {
         return commandName;
     }
 
