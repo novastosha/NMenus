@@ -7,7 +7,10 @@ public class ExecuteCommandPlayer extends Action{
 
     private final String command;
 
-    public ExecuteCommandPlayer(String command){
+    public static final String CODE = "execute_player_command";
+
+    public ExecuteCommandPlayer(String command,String actionId){
+        super(actionId);
         this.command = command;
     }
 

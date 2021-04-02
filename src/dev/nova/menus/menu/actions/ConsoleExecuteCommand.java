@@ -8,7 +8,10 @@ public class ConsoleExecuteCommand extends Action{
 
     private final String command;
 
-    public ConsoleExecuteCommand(String command){
+    public static final String CODE = "execute_console_command";
+
+    public ConsoleExecuteCommand(String command,String actionId){
+        super(actionId);
         this.command = command;
     }
 
