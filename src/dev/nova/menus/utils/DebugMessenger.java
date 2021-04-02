@@ -12,7 +12,7 @@ public class DebugMessenger
     }
 
     public void sendMLM(String message) {
-        if(plugin.getConfig().getBoolean("more-loading-message")){
+        if(plugin.getConfig().getBoolean("more-loading-messages")){
             Bukkit.getConsoleSender().sendMessage("§7[§eNMenus§7] "+message);
         }
     }
