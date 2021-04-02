@@ -4,10 +4,8 @@ import dev.nova.menus.menu.manager.MenuManager;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.block.BlockPhysicsEvent;
+import org.bukkit.event.inventory.*;
 
 public class MenuClickListener implements Listener {
 
@@ -19,6 +17,15 @@ public class MenuClickListener implements Listener {
                 if (menu.getInventories().contains(event.getClickedInventory())) {
                     if (menu.getBorderItem() != null) {
                         if (menu.getBorderSlotList().contains(event.getSlot())) event.setCancelled(true);
+                    }
+                    switch(event.getAction()){
+                        case PLACE_ALL:
+                        case PLACE_ONE:
+                        case PLACE_SOME:
+                            if(!menu.canPutItems()){
+                                event.setCancelled(true);
+                            }
+
                     }
                     Slot slot = menu.getSlotFromNumber(event.getSlot());
                     if (slot != null) {
@@ -38,7 +45,8 @@ public class MenuClickListener implements Listener {
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event){
         for(Menu menu : MenuManager.MENUS){
-            menu.getInventories().remove(event.getInventory());
+
+            if(!menu.isShareable()) menu.getInventories().remove(event.getInventory());
         }
     }
 }
