@@ -9,7 +9,11 @@ public class OpenMenu extends Action{
 
     private final String menuCodeName;
 
-    public OpenMenu(String menuCodeName){
+    public static final String CODE = "open_menu";
+
+
+    public OpenMenu(String menuCodeName,String actionId){
+        super(actionId);
         this.menuCodeName = menuCodeName;
     }
 

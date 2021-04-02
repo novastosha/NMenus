@@ -7,7 +7,10 @@ public class SendMessage extends Action{
 
     private final String message;
 
-    public SendMessage(String message){
+    public static final String CODE = "send_message";
+
+    public SendMessage(String actionId,String message){
+        super(actionId);
         this.message = message;
     }
 

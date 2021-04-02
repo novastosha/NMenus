@@ -8,7 +8,10 @@ public class Teleport extends Action{
 
     private final Location location;
 
-    public Teleport(Location location){
+    public static final String CODE = "teleport";
+
+    public Teleport(Location location,String actionId){
+        super(actionId);
         this.location = location;
     }
 
