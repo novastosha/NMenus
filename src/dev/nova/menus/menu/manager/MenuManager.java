@@ -3,9 +3,12 @@ package dev.nova.menus.menu.manager;
 import dev.nova.menus.Main;
 import dev.nova.menus.menu.*;
 import dev.nova.menus.menu.actions.Action;
-import dev.nova.menus.menu.actions.ExecuteCommandPlayer;
-import dev.nova.menus.menu.actions.SendJSONMessage;
-import dev.nova.menus.menu.actions.SendMessage;
+import dev.nova.menus.menu.actions.base.Pram;
+import dev.nova.menus.menu.actions.base.RawAction;
+import dev.nova.menus.menu.actions.manager.ActionManager;
+import dev.nova.menus.register.command.CCommand;
+import dev.nova.menus.utils.head.Head;
+import dev.nova.menus.utils.head.NBase64;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -18,6 +21,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.ItemFlag;
@@ -27,14 +32,15 @@ import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.util.*;
 
 public class MenuManager {
 
     public static List<Menu> MENUS = new ArrayList<>();
+    private static int loaded;
 
     public static int loadMenus(File menus) {
-        int loaded = 0;
         Bukkit.getConsoleSender().sendMessage("[" + ChatColor.YELLOW + "NMenus" + "§r] §rLoading menus in: " + menus.getPath());
         for (File file : Objects.requireNonNull(menus.listFiles())) {
             if (!file.isDirectory()) {
@@ -49,14 +55,22 @@ public class MenuManager {
         return loaded;
     }
 
+    public static void setLoaded(int loaded) {
+        MenuManager.loaded = loaded;
+    }
+
     public static void reloadMenus(CommandSender sender) {
         if (!(sender == null)) sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Reloading menus...");
         for(Menu menu : MENUS){
             Bukkit.getServer().getScheduler().cancelTask(menu.getRefreshTaskID());
+            for(Integer integer : menu.getSlotTaskIDies()){
+                Bukkit.getServer().getScheduler().cancelTask(integer);
+            }
         }
+
         MENUS = new ArrayList<>();
-        if (!(sender == null))
-            sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Loaded: " + loadMenus(new File(Main.getPlugin(Main.class).getDataFolder() + "/menus")) + " menu(s)");
+        sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Loaded: " + loadMenus(Main.MENUS_FOLDER) + " menu(s)");
+        MenuManager.setLoaded(0);
     }
 
     public static boolean loadMenu(File file) {
@@ -74,21 +88,27 @@ public class MenuManager {
             return false;
         }
         String codeName = configuration.getString("code-name");
+        Main.DEBUG.sendMLM("Determined: §e"+codeName+"§7 as a code-name for the menu: §e"+file.getName());
         if (!configuration.contains("display-name")) {
             Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + " does not contain a display name!");
             return false;
         }
         String displayName = configuration.getString("display-name").replaceAll("\"", "").replaceAll("&", "§");
-        String command = null;
-        if (configuration.contains("command")) {
-            command = configuration.getString("command");
+        Main.DEBUG.sendMLM("Set the display-name (menu-title) of the menu: §e"+codeName+" §7to: §r"+displayName);
+        List<String> command = null;
+        if (configuration.contains("commands")) {
+            command = configuration.getStringList("commands");
             for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
-                for (String commandL : plugin.getDescription().getCommands().keySet()) {
-                    if (commandL.equals(command)) {
-                        command = null;
-                        Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r contains a command that interferes with '" + plugin.getName() + "'");
-                        Bukkit.getConsoleSender().sendMessage("§7(Commands will be registered under NMenus in a later update...)");
-                        return false;
+                if(plugin.getDescription().getCommands() != null) {
+                    for (String commandL : plugin.getDescription().getCommands().keySet()) {
+                        for (String mCmd : command) {
+                            if (commandL.equals(mCmd)) {
+                                command = null;
+                                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r contains a command that interferes with '" + plugin.getName() + "'");
+                                Bukkit.getConsoleSender().sendMessage("§7(Commands will be registered under NMenus in a later update...)");
+                                return false;
+                            }
+                        }
                     }
                 }
             }
@@ -100,7 +120,6 @@ public class MenuManager {
                 }
             }
         }
-
         InventoryType inventoryType = null;
         if (configuration.contains("inventoryType")) {
             try {
@@ -128,10 +147,13 @@ public class MenuManager {
             return false;
         }
 
+        Main.DEBUG.sendMLM("Set: §e"+inventoryType.toString()+" §7as inventory type of menu:§e "+codeName);
         boolean shareable = false;
         if (configuration.contains("shareable")) {
             shareable = configuration.getBoolean("shareable");
         }
+
+        if(shareable) Main.DEBUG.sendMLM("Set the menu: §e"+codeName+"§7 as a shareable menu!");
 
         Material borderType = null;
         MenuBorderColor borderColor = null;
@@ -157,6 +179,10 @@ public class MenuManager {
                 }
             }
         }
+        boolean canPutItems = false;
+        if(configuration.contains("can-put-items")){
+            canPutItems = configuration.getBoolean("can-put-items");
+        }
 
         List<Slot> slotsArray = new ArrayList<>();
 
@@ -168,11 +194,15 @@ public class MenuManager {
 
                 ConfigurationSection slotConfig = slots.getConfigurationSection(slot);
                 ItemStack item = null;
-
-                if(!slotConfig.contains("animation")) item = makeSlot(slotConfig,slot,codeName);
                 boolean canBePicked = false;
                 if (slotConfig.contains("canBePicked")) {
                     canBePicked = slotConfig.getBoolean("canBePicked");
+                }
+                if(!slotConfig.contains("animation")) item = makeSlot(slotConfig,slot,codeName);
+                else{
+                    if(canBePicked){
+                        canBePicked = false;
+                    }
                 }
                 HashMap<Action,ClickType> actions = new HashMap<>();
 
@@ -183,17 +213,72 @@ public class MenuManager {
                             ClickType clickType = ClickType.valueOf(actionType.toUpperCase());
                             ConfigurationSection actionConfig = slotConfig.getConfigurationSection("actions."+actionType);
                             actionConfig.getKeys(false).forEach(action -> {
-                                if(action.contains("execute_player_command_")){
-                                    actions.put(new ExecuteCommandPlayer(actionConfig.getString(action).replaceAll("\"", "")),clickType);
-                                }
-                                if(action.contains("execute_console_command_")){
-                                    actions.put(new ExecuteCommandPlayer(actionConfig.getString(action).replaceAll("\"", "")),clickType);
-                                }
-                                if(action.contains("send_message_")){
-                                    actions.put(new SendMessage(actionConfig.getString(action).replaceAll("\"", "")),clickType);
-                                }
-                                if(action.contains("json_message_")){
-                                    actions.put(new SendJSONMessage(buildText(action,actionConfig.getConfigurationSection(action))),clickType);
+                                for(RawAction clazz : ActionManager.ACTIONS){
+                                    String code = ActionManager.getCode(clazz);
+                                    if(code != null){
+                                        if(action.contains(code+"_")){
+                                            String id = action.replaceFirst(code+"_","");
+                                            try {
+                                                ArrayList<Class<?>> array = new ArrayList<Class<?>>(50);
+                                                ArrayList<Object> arrayV = new ArrayList<Object>(50);
+                                                if(actionConfig.getConfigurationSection(action) != null) {
+                                                    for (String value : actionConfig.getConfigurationSection(action).getKeys(false)) {
+                                                        for (Pram pram : clazz.getConstructorParams()) {
+                                                            if (pram.getConfig() == null) {
+                                                                array.add(pram.getIndex(), String.class);
+                                                                arrayV.add(pram.getIndex(), id);
+                                                            } else if (pram.getConfig() != null && pram.getConfig().equals(value)) {
+                                                                array.add(pram.getIndex() - 1, (Class<?>) pram.getValue());
+                                                                if (!value.equalsIgnoreCase("config")) {
+                                                                    arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action).get(value));
+                                                                } else {
+
+                                                                    if (actionConfig.getConfigurationSection(action).getString(value).equalsIgnoreCase("this")) {
+                                                                        arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action));
+                                                                    } else {
+                                                                        arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action).getConfigurationSection(actionConfig.getConfigurationSection(action).getString(value)));
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        if (array.size() >= clazz.getConstructorParams().size()) {
+                                                            break;
+                                                        }
+                                                    }
+                                                }else{
+                                                    for (Pram pram : clazz.getConstructorParams()) {
+                                                        if (pram.getConfig() == null) {
+                                                            array.add(pram.getIndex(), String.class);
+                                                            arrayV.add(pram.getIndex(), id);
+                                                        } else if (pram.getConfig() != null && pram.getConfig().equals(action)) {
+                                                            array.add(pram.getIndex() - 1, (Class<?>) pram.getValue());
+                                                            if (!action.equalsIgnoreCase("config")) {
+                                                                arrayV.add(pram.getIndex() - 1, actionConfig.get(action));
+                                                            } else {
+
+                                                                if (actionConfig.getString(action).equalsIgnoreCase("this")) {
+                                                                    throw new IllegalArgumentException("A single value cannot have a configuration section!");
+                                                                } else {
+                                                                    arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(actionConfig.getString(action)));
+                                                                }
+                                                            }
+                                                        }
+                                                        if (array.size() >= clazz.getConstructorParams().size()) {
+                                                            break;
+                                                        }
+                                                    }
+
+                                                }
+                                                Class<?>[] classes = array.toArray(new Class<?>[0]);
+                                                Object[] objects = arrayV.toArray(new Object[0]);
+
+                                                Constructor<? extends Action> constructor = clazz.getClazz().getDeclaredConstructor(classes);
+                                                actions.put((Action) constructor.newInstance(objects),clickType);
+                                            } catch (/*InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e*/ Exception e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    }
                                 }
                             });
                         }catch (IllegalArgumentException e){
@@ -201,7 +286,9 @@ public class MenuManager {
                         }
                     });
                 }
-
+                for(Action action : actions.keySet()){
+                    Main.DEBUG.sendMLM("Added: §e"+action.getClass().getSimpleName()+"§7 as an action to slot(s): §e"+slot);
+                }
                 String[] slotsTo = slot.split(",");
                 if(slotsTo.length != 1) {
                     for (String slotS : slotsTo) {
@@ -228,7 +315,7 @@ public class MenuManager {
                                 int finalI = i;
                                 animationConfig.getKeys(false).forEach(frame -> {
                                     ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
-                                    items.add(new MenuSlot(-1,makeSlot(frameConfig, slot,codeName),actions, finalCanBePicked));
+                                    items.add(new MenuSlot(-1,makeSlot(frameConfig, finalI+" frame: "+frame,codeName),actions, finalCanBePicked));
                                 });
                                 slotsArray.add(new MenuAnimatedSlot(i,actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
                             }
@@ -253,25 +340,41 @@ public class MenuManager {
                         boolean finalCanBePicked = canBePicked;
                         animationConfig.getKeys(false).forEach(frame -> {
                                ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
-                               items.add(new MenuSlot(-1,makeSlot(frameConfig,slot,codeName),actions, finalCanBePicked));
+                               items.add(new MenuSlot(-1,makeSlot(frameConfig,slot+" frame: "+frame,codeName),actions, finalCanBePicked));
                         });
                         slotsArray.add(new MenuAnimatedSlot(Integer.parseInt(slot),actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
                     }
                 }
             });
         }
-        Menu menu = new Menu(codeName, displayName, command, slotsArray, inventoryType, rows, shareable,configuration,file,borderColor,borderType,borderRefresh);
+        Menu menu = new Menu(codeName, displayName, command, slotsArray, inventoryType, rows, shareable,configuration,file,borderColor,borderType,borderRefresh,canPutItems);
         for (Slot slot : slotsArray) {
 
             if(slot instanceof MenuSlot) ((MenuSlot)slot).setMenu(menu);
             else ((MenuAnimatedSlot) slot).setMenu(menu);
+        }
+        Main.DEBUG.sendMLM("Registering commands...");
+        if(command != null) {
+            for (String cmd : command) {
+                Main.DEBUG.sendMLM("Added: §e" + cmd + "§7 as a command to the menu: §e" + codeName);
+                Main.getInstance().registerCommands(new CCommand(cmd) {
+                    @Override
+                    public void run(CommandSender sender, String commandLabel, String[] arguments) {
+                        if(sender instanceof Player) {
+                            menu.openInventory((Player) sender);
+                        }else{
+                            sender.sendMessage("§cOnly players can open menus!");
+                        }
+                    }
+                });
+            }
         }
         MENUS.add(menu);
         Bukkit.getConsoleSender().sendMessage("§7[§eNMenus]§7 Loaded the menu: §e"+codeName);
         return true;
     }
 
-    private static TextComponent buildText(String action, ConfigurationSection config) {
+    public static TextComponent buildText(String action, ConfigurationSection config) {
         TextComponent textBuilder = new TextComponent(config.getString("message"));
         if(config.contains("hover")){
             if(config.contains("hover.show_text")){
@@ -292,51 +395,75 @@ public class MenuManager {
     }
 
     private static ItemStack makeSlot(ConfigurationSection slotConfig,String slot, String codeName) {
-        ItemStack item = new ItemStack(Material.getMaterial(slotConfig.getString("material").toUpperCase()), slotConfig.getInt("amount"));
-
-        ItemMeta itemMeta = item.getItemMeta();
-        List<String> flags = new ArrayList<>();
-        if (slotConfig.contains("flags")) {
-            flags = slotConfig.getStringList("flags");
-        }
-        for (String flag : flags) {
-            flag = flag.toUpperCase();
-            try {
-                ItemFlag itemFlag = ItemFlag.valueOf(flag);
-                itemMeta.addItemFlags(itemFlag);
-            } catch (IllegalArgumentException e) {
-                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains a flag that is unknown (" + flag + ")");
+        Main.DEBUG.sendMLM("Making slot's item of: §e"+slot);
+        ItemStack item = null;
+        if(!slotConfig.getString("material").contains("head")) {
+            item = new ItemStack(Material.getMaterial(slotConfig.getString("material").toUpperCase()), slotConfig.getInt("amount"));
+        }else {
+            try{
+                String headS = slotConfig.getString("material");
+                if (headS.contains("mob")) {
+                        Head head = Head.Mob.getFromType(EntityType.valueOf(headS.replaceFirst("head-mob-", "").toUpperCase()));
+                        item = head.getHead();
+                }
+                if(headS.contains("player")){
+                    Head head = new Head("PLAYER",headS.replaceFirst("head-player-", ""));
+                    item = head.getHead();
+                }
+                if(headS.contains("base64")){
+                    Head head = new Head("PLAYER",new NBase64(headS.replaceFirst("head-base64-", "")));
+                    item = head.getHead();
+                }
+            }catch (IllegalArgumentException e){
             }
         }
-        List<String> enchants = new ArrayList<>();
-        if (slotConfig.contains("enchants")) {
-            enchants = slotConfig.getStringList("enchants");
-        }
-        for (String enchant : enchants) {
-            enchant = enchant.replaceAll("\"", "");
-            int level = 0;
-            try {
-                level = Integer.parseInt(stripNonDigits(enchant));
-            } catch (NumberFormatException e) {
-                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " the enchant level is not correct!");
+        if(item.hasItemMeta()) {
+            ItemMeta itemMeta = item.getItemMeta();
+            List<String> flags = new ArrayList<>();
+            if (slotConfig.contains("flags")) {
+                flags = slotConfig.getStringList("flags");
             }
-            enchant = enchant.replaceAll("[0-9]", "");
-            enchant = enchant.replaceAll("\\(", "");
-            enchant = enchant.replaceAll("\\)", "");
-            try {
-                Enchantment enchantment = Enchantment.getByName(enchant.toUpperCase());
-                itemMeta.addEnchant(enchantment, level, true);
-
-            } catch (IllegalArgumentException e) {
-                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains an enchant that is unknown (" + enchant + ")");
+            for (String flag : flags) {
+                flag = flag.toUpperCase();
+                try {
+                    ItemFlag itemFlag = ItemFlag.valueOf(flag);
+                    itemMeta.addItemFlags(itemFlag);
+                    Main.DEBUG.sendMLM("Added item flag: §e" + flag + " §7to slot: " + slot);
+                } catch (IllegalArgumentException e) {
+                    Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains a flag that is unknown (" + flag + ")");
+                }
             }
+            List<String> enchants = new ArrayList<>();
+            if (slotConfig.contains("enchants")) {
+                enchants = slotConfig.getStringList("enchants");
+            }
+            for (String enchant : enchants) {
+                enchant = enchant.replaceAll("\"", "");
+                int level = 0;
+                try {
+                    level = Integer.parseInt(stripNonDigits(enchant));
+                } catch (NumberFormatException e) {
+                    Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " the enchant level is not correct!");
+                }
+                enchant = enchant.replaceAll("[0-9]", "");
+                enchant = enchant.replaceAll("\\(", "");
+                enchant = enchant.replaceAll("\\)", "");
+                try {
+                    Enchantment enchantment = Enchantment.getByName(enchant.toUpperCase());
+                    itemMeta.addEnchant(enchantment, level, true);
+                    Main.DEBUG.sendMLM("Added enchant: §e" + enchantment + "§7 to slot: " + slot);
+                } catch (IllegalArgumentException e) {
+                    Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " contains an enchant that is unknown (" + enchant + ")");
+                }
 
+            }
+            if (slotConfig.contains("name")) {
+                String name = slotConfig.getString("name");
+                itemMeta.setDisplayName(name.replaceAll("\"", "").replaceAll("&", "§"));
+                Main.DEBUG.sendMLM("Set the name of the item in the slot to: §r" + name);
+            }
+            item.setItemMeta(itemMeta);
         }
-        if (slotConfig.contains("name")) {
-            String name = slotConfig.getString("name");
-            itemMeta.setDisplayName(name.replaceAll("\"", "").replaceAll("&", "§"));
-        }
-        item.setItemMeta(itemMeta);
 
         return item;
     }
