@@ -1,28 +1,33 @@
 package dev.nova.menus;
 
-import dev.nova.menus.commands.CustomCommandListener;
 import dev.nova.menus.commands.NMenusCommand;
 import dev.nova.menus.menu.MenuClickListener;
-import dev.nova.menus.menu.anvil.AnvilGUI;
+import dev.nova.menus.menu.actions.manager.ActionManager;
 import dev.nova.menus.menu.manager.MenuManager;
+import dev.nova.menus.register.command.CCommand;
 import dev.nova.menus.utils.DebugMessenger;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
+import org.bukkit.plugin.SimplePluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
-import java.util.function.BiFunction;
+import java.lang.reflect.Field;
+import java.util.Arrays;
 
 public class Main extends JavaPlugin {
 
     public static File MENUS_FOLDER;
     public static DebugMessenger DEBUG;
+    private static Main INSTANCE;
+    private static SimpleCommandMap scm;
+    private SimplePluginManager spm;
 
     @Override
     public void onEnable() {
-
+        INSTANCE = this;
         File menus = new File(getDataFolder(),"menus");
         MENUS_FOLDER = menus;
         menus.mkdirs();
@@ -44,13 +49,37 @@ public class Main extends JavaPlugin {
             getConfig().options().copyDefaults(true);
             saveConfig();
         }
+        setupSimpleCommandMap();
         DEBUG = new DebugMessenger(this);
+        ActionManager.loadActionAddons(new File("./plugins"));
         int loadedMenus = MenuManager.loadMenus(menus);
         Bukkit.getConsoleSender().sendMessage("["+ ChatColor.YELLOW+"NMenus"+"§r] Loaded: "+loadedMenus+" menu(s)!");
+        MenuManager.setLoaded(0);
         Bukkit.getPluginManager().registerEvents(new MenuClickListener(),this);
-        Bukkit.getPluginManager().registerEvents(new CustomCommandListener(),this);
-        //Bukkit.getPluginManager().registerEvents(new EditorManager(),this);
         getCommand("nmenus").setExecutor(new NMenusCommand());
 
+    }
+
+    public static Main getInstance() {
+        return INSTANCE;
+    }
+    public void registerCommands(CCommand... commands) {
+        Arrays.stream(commands).forEach(command -> scm.register(getName(), command));
+    }
+
+    private void setupSimpleCommandMap() {
+        spm = (SimplePluginManager) this.getServer().getPluginManager();
+        Field f = null;
+        try {
+            f = SimplePluginManager.class.getDeclaredField("commandMap");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        f.setAccessible(true);
+        try {
+            scm = (SimpleCommandMap) f.get(spm);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
