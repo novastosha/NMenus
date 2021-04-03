@@ -274,8 +274,12 @@ public class MenuManager {
 
                                                 Constructor<? extends Action> constructor = clazz.getClazz().getDeclaredConstructor(classes);
                                                 actions.put((Action) constructor.newInstance(objects),clickType);
-                                            } catch (/*InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e*/ Exception e) {
-                                                e.printStackTrace();
+                                            } catch (Exception e) {
+                                                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + " unable to load action: §e"+id+" §7(§e"+action+"§7)");
+                                                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Reason: §e"+e.getMessage());
+                                                for(StackTraceElement element : e.getStackTrace()){
+                                                    Bukkit.getConsoleSender().sendMessage("§cERROR: "+element.toString());
+                                                }
                                             }
                                         }
                                     }
