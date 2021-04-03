@@ -108,7 +108,7 @@ public class ActionManager {
                                     type = null;
                                 }
                                 objects.add(new Pram(pramType.getClazz(), type, index[0]));
-                            }catch (IllegalArgumentException e) {
+                            }catch (IllegalArgumentException ignored) {
 
                             }
                             index[0] = index[0] +1;
@@ -119,7 +119,6 @@ public class ActionManager {
                 } catch (ClassNotFoundException e) {
                     Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The addon: "+file.getName()+" has an action class that doesn't exist!");
                 }
-
             });
             return true;
         } catch (Exception e) {
