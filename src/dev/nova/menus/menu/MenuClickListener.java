@@ -25,7 +25,6 @@ public class MenuClickListener implements Listener {
                             if(!menu.canPutItems()){
                                 event.setCancelled(true);
                             }
-
                     }
                     Slot slot = menu.getSlotFromNumber(event.getSlot());
                     if (slot != null) {
