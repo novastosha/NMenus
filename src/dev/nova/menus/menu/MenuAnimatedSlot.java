@@ -3,10 +3,12 @@ package dev.nova.menus.menu;
 import dev.nova.menus.menu.Menu;
 import dev.nova.menus.menu.MenuSlot;
 import dev.nova.menus.menu.actions.Action;
+import dev.nova.menus.menu.conditions.Condition;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -17,14 +19,20 @@ public class MenuAnimatedSlot extends Slot{
     private final int slot;
     private final HashMap<Action,org.bukkit.event.inventory.ClickType> actions;
     private final boolean canBePicked;
+    private final ArrayList<Condition> conditions;
     private Menu menu;
 
-    public MenuAnimatedSlot(int slot, HashMap<Action, ClickType> actions, boolean canBePicked , int refreshRate, List<MenuSlot> asSlots){
+    public MenuAnimatedSlot(int slot, HashMap<Action, ClickType> actions, ArrayList<Condition> conditions, boolean canBePicked , int refreshRate, List<MenuSlot> asSlots){
         this.refreshRate = refreshRate;
         this.actions = actions;
+        this.conditions = conditions;
         this.canBePicked = canBePicked;
         this.slot = slot;
         this.slots = asSlots;
+    }
+
+    public ArrayList<Condition> getConditions() {
+        return conditions;
     }
 
     public HashMap<Action, ClickType> getActions() {
