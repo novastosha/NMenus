@@ -5,7 +5,9 @@ import dev.nova.menus.menu.*;
 import dev.nova.menus.menu.actions.Action;
 import dev.nova.menus.menu.actions.base.Pram;
 import dev.nova.menus.menu.actions.base.RawAction;
-import dev.nova.menus.menu.actions.manager.ActionManager;
+import dev.nova.menus.addon.manager.AddonManager;
+import dev.nova.menus.menu.conditions.Condition;
+import dev.nova.menus.menu.conditions.base.RawCondition;
 import dev.nova.menus.register.command.CCommand;
 import dev.nova.menus.utils.head.Head;
 import dev.nova.menus.utils.head.NBase64;
@@ -40,6 +42,24 @@ public class MenuManager {
     public static List<Menu> MENUS = new ArrayList<>();
     private static int loaded;
 
+    public static void reloadMenus(CommandSender sender) {
+        if (sender != null) sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Reloading menus...");
+        for(Menu menu : MENUS){
+            Bukkit.getServer().getScheduler().cancelTask(menu.getRefreshTaskID());
+            for(Integer integer : menu.getSlotTaskIDies()){
+                Bukkit.getServer().getScheduler().cancelTask(integer);
+            }
+        }
+        MENUS = new ArrayList<>();
+        int l = loadMenus(Main.MENUS_FOLDER);
+        if (sender != null) sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Loaded: " + l + " menu(s)");
+        MenuManager.setLoaded(0);
+    }
+
+    public static void setLoaded(int loaded) {
+        MenuManager.loaded = loaded;
+    }
+
     public static int loadMenus(File menus) {
         Bukkit.getConsoleSender().sendMessage("[" + ChatColor.YELLOW + "NMenus" + "§r] §rLoading menus in: " + menus.getPath());
         for (File file : Objects.requireNonNull(menus.listFiles())) {
@@ -53,24 +73,6 @@ public class MenuManager {
             }
         }
         return loaded;
-    }
-
-    public static void setLoaded(int loaded) {
-        MenuManager.loaded = loaded;
-    }
-
-    public static void reloadMenus(CommandSender sender) {
-        if (!(sender == null)) sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Reloading menus...");
-        for(Menu menu : MENUS){
-            Bukkit.getServer().getScheduler().cancelTask(menu.getRefreshTaskID());
-            for(Integer integer : menu.getSlotTaskIDies()){
-                Bukkit.getServer().getScheduler().cancelTask(integer);
-            }
-        }
-
-        MENUS = new ArrayList<>();
-        sender.sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Loaded: " + loadMenus(Main.MENUS_FOLDER) + " menu(s)");
-        MenuManager.setLoaded(0);
     }
 
     public static boolean loadMenu(File file) {
@@ -105,7 +107,7 @@ public class MenuManager {
                             if (commandL.equals(mCmd)) {
                                 command = null;
                                 Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r contains a command that interferes with '" + plugin.getName() + "'");
-                                Bukkit.getConsoleSender().sendMessage("§7(Commands will be registered under NMenus in a later update...)");
+
                                 return false;
                             }
                         }
@@ -190,6 +192,7 @@ public class MenuManager {
             ConfigurationSection slots = configuration.getConfigurationSection("slots");
             int finalRows = rows;
             Material finalBorderType = borderType;
+            boolean finalShareable = shareable;
             slots.getKeys(false).forEach(slot -> {
 
                 ConfigurationSection slotConfig = slots.getConfigurationSection(slot);
@@ -205,6 +208,23 @@ public class MenuManager {
                     }
                 }
                 HashMap<Action,ClickType> actions = new HashMap<>();
+                ArrayList<Condition> conditions = new ArrayList<>();
+
+                if(slotConfig.contains("view_conditions")){
+                    if(!finalShareable){
+                        ConfigurationSection viewConditions = slotConfig.getConfigurationSection("view_conditions");
+                        viewConditions.getKeys(false).forEach(condition -> {
+                            Condition con = loadCondition(condition);
+                            if(con != null){
+
+                            }else{
+                                Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Could not find the condition: §e"+condition);
+                            }
+                        });
+                    }else{
+                        Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] You cannot have view conditions on a shareable menu!");
+                    }
+                }
 
                 if (slotConfig.contains("actions")) {
                     ConfigurationSection actionsConfig = slotConfig.getConfigurationSection("actions");
@@ -213,8 +233,8 @@ public class MenuManager {
                             ClickType clickType = ClickType.valueOf(actionType.toUpperCase());
                             ConfigurationSection actionConfig = slotConfig.getConfigurationSection("actions."+actionType);
                             actionConfig.getKeys(false).forEach(action -> {
-                                for(RawAction clazz : ActionManager.ACTIONS){
-                                    String code = ActionManager.getCode(clazz);
+                                for(RawAction clazz : AddonManager.ActionManager.ACTIONS){
+                                    String code = AddonManager.ActionManager.getCode(clazz);
                                     if(code != null){
                                         if(action.contains(code+"_")){
                                             String id = action.replaceFirst(code+"_","");
@@ -230,13 +250,14 @@ public class MenuManager {
                                                             } else if (pram.getConfig() != null && pram.getConfig().equals(value)) {
                                                                 array.add(pram.getIndex() - 1, (Class<?>) pram.getValue());
                                                                 if (!value.equalsIgnoreCase("config")) {
+
                                                                     arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action).get(value));
                                                                 } else {
 
                                                                     if (actionConfig.getConfigurationSection(action).getString(value).equalsIgnoreCase("this")) {
                                                                         arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action));
                                                                     } else {
-                                                                        arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action).getConfigurationSection(actionConfig.getConfigurationSection(action).getString(value)));
+                                                                        arrayV.add(pram.getIndex() - 1, configuration.getConfigurationSection(actionConfig.getConfigurationSection(action).getString(value).replaceAll("/",".")));
                                                                     }
                                                                 }
                                                             }
@@ -310,7 +331,7 @@ public class MenuManager {
                                 Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + i + " interferes with the border slots!");
                                 return;
                             }
-                            if(!slotConfig.contains("animation")) slotsArray.add(new MenuSlot(i, item, actions, canBePicked));
+                            if(!slotConfig.contains("animation")) slotsArray.add(new MenuSlot(i, item, actions,conditions, canBePicked));
                             else {
                                 List<MenuSlot> items = new ArrayList<>();
 
@@ -319,9 +340,9 @@ public class MenuManager {
                                 int finalI = i;
                                 animationConfig.getKeys(false).forEach(frame -> {
                                     ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
-                                    items.add(new MenuSlot(-1,makeSlot(frameConfig, finalI+" frame: "+frame,codeName),actions, finalCanBePicked));
+                                    items.add(new MenuSlot(-1,makeSlot(frameConfig, finalI+" frame: "+frame,codeName),actions,conditions, finalCanBePicked));
                                 });
-                                slotsArray.add(new MenuAnimatedSlot(i,actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
+                                slotsArray.add(new MenuAnimatedSlot(i,actions,conditions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
                             }
                         }
                     }
@@ -331,7 +352,7 @@ public class MenuManager {
                             Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + "§r slot: " + slot + " interferes with the border slots!");
                             return;
                         }
-                        slotsArray.add(new MenuSlot(Integer.parseInt(slot), item, actions, canBePicked));
+                        slotsArray.add(new MenuSlot(Integer.parseInt(slot), item, actions,conditions, canBePicked));
                     }
                     else{
                         if(generateBorderSlotList(finalRows).contains(Integer.parseInt(slot)) && finalBorderType != null) {
@@ -344,9 +365,9 @@ public class MenuManager {
                         boolean finalCanBePicked = canBePicked;
                         animationConfig.getKeys(false).forEach(frame -> {
                                ConfigurationSection frameConfig = animationConfig.getConfigurationSection(frame);
-                               items.add(new MenuSlot(-1,makeSlot(frameConfig,slot+" frame: "+frame,codeName),actions, finalCanBePicked));
+                               items.add(new MenuSlot(-1,makeSlot(frameConfig,slot+" frame: "+frame,codeName),actions,conditions, finalCanBePicked));
                         });
-                        slotsArray.add(new MenuAnimatedSlot(Integer.parseInt(slot),actions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
+                        slotsArray.add(new MenuAnimatedSlot(Integer.parseInt(slot),actions,conditions,canBePicked,slotConfig.getConfigurationSection("animation").getInt("refresh-rate"), items));
                     }
                 }
             });
@@ -376,6 +397,77 @@ public class MenuManager {
         MENUS.add(menu);
         Bukkit.getConsoleSender().sendMessage("§7[§eNMenus]§7 Loaded the menu: §e"+codeName);
         return true;
+    }
+
+    private static Condition loadCondition(String condition){
+        RawCondition rawCondition = AddonManager.ConditionManager.getByCode(condition);
+        if(rawCondition == null){
+            return null;
+        }
+        /*try {
+            ArrayList<Class<?>> array = new ArrayList<Class<?>>(50);
+            ArrayList<Object> arrayV = new ArrayList<Object>(50);
+            if(actionConfig.getConfigurationSection(action) != null) {
+                for (String value : actionConfig.getConfigurationSection(action).getKeys(false)) {
+                    for (Pram pram : clazz.getConstructorParams()) {
+                        if (pram.getConfig() == null) {
+                            array.add(pram.getIndex(), String.class);
+                            arrayV.add(pram.getIndex(), id);
+                        } else if (pram.getConfig() != null && pram.getConfig().equals(value)) {
+                            array.add(pram.getIndex() - 1, (Class<?>) pram.getValue());
+                            if (!value.equalsIgnoreCase("config")) {
+                                arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action).get(value));
+                            } else {
+
+                                if (actionConfig.getConfigurationSection(action).getString(value).equalsIgnoreCase("this")) {
+                                    arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action));
+                                } else {
+                                    arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(action).getConfigurationSection(actionConfig.getConfigurationSection(action).getString(value)));
+                                }
+                            }
+                        }
+                    }
+                    if (array.size() >= clazz.getConstructorParams().size()) {
+                        break;
+                    }
+                }
+            }else{
+                for (Pram pram : clazz.getConstructorParams()) {
+                    if (pram.getConfig() == null) {
+                        array.add(pram.getIndex(), String.class);
+                        arrayV.add(pram.getIndex(), id);
+                    } else if (pram.getConfig() != null && pram.getConfig().equals(action)) {
+                        array.add(pram.getIndex() - 1, (Class<?>) pram.getValue());
+                        if (!action.equalsIgnoreCase("config")) {
+                            arrayV.add(pram.getIndex() - 1, actionConfig.get(action));
+                        } else {
+
+                            if (actionConfig.getString(action).equalsIgnoreCase("this")) {
+                                throw new IllegalArgumentException("A single value cannot have a configuration section!");
+                            } else {
+                                arrayV.add(pram.getIndex() - 1, actionConfig.getConfigurationSection(actionConfig.getString(action)));
+                            }
+                        }
+                    }
+                    if (array.size() >= clazz.getConstructorParams().size()) {
+                        break;
+                    }
+                }
+
+            }
+            Class<?>[] classes = array.toArray(new Class<?>[0]);
+            Object[] objects = arrayV.toArray(new Object[0]);
+
+            Constructor<? extends Action> constructor = clazz.getClazz().getDeclaredConstructor(classes);
+            actions.put((Action) constructor.newInstance(objects),clickType);
+        } catch (Exception e) {
+            Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] The menu: " + codeName + " unable to load action: §e"+id+" §7(§e"+action+"§7)");
+            Bukkit.getConsoleSender().sendMessage("§7[" + ChatColor.YELLOW + "NMenus" + "§7] Reason: §e"+e.getMessage());
+            for(StackTraceElement element : e.getStackTrace()){
+                Bukkit.getConsoleSender().sendMessage("§cERROR: "+element.toString());
+            }
+        }*/
+        return null;
     }
 
     public static TextComponent buildText(String action, ConfigurationSection config) {
