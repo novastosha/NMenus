@@ -2,8 +2,10 @@ package dev.nova.menus;
 
 import dev.nova.menus.commands.NMenusCommand;
 import dev.nova.menus.menu.MenuClickListener;
-import dev.nova.menus.menu.actions.manager.ActionManager;
+import dev.nova.menus.addon.manager.AddonManager;
 import dev.nova.menus.menu.manager.MenuManager;
+import dev.nova.menus.misc.binding.controller.WrapperControl;
+import dev.nova.menus.misc.binding.listeners.ItemClickListener;
 import dev.nova.menus.register.command.CCommand;
 import dev.nova.menus.utils.DebugMessenger;
 import org.bukkit.Bukkit;
@@ -23,6 +25,7 @@ import java.util.Arrays;
 
 public class Main extends JavaPlugin {
 
+    public static final WrapperControl WRAPPER = new WrapperControl();
     public static File MENUS_FOLDER;
     public static DebugMessenger DEBUG;
     private static Main INSTANCE;
@@ -55,11 +58,12 @@ public class Main extends JavaPlugin {
         }
         setupSimpleCommandMap();
         DEBUG = new DebugMessenger(this);
-        ActionManager.loadActionAddons(new File("./plugins"));
+        AddonManager.loadAddons(new File("./plugins"));
         int loadedMenus = MenuManager.loadMenus(menus);
         Bukkit.getConsoleSender().sendMessage("["+ ChatColor.YELLOW+"NMenus"+"§r] Loaded: "+loadedMenus+" menu(s)!");
         MenuManager.setLoaded(0);
         Bukkit.getPluginManager().registerEvents(new MenuClickListener(),this);
+        Bukkit.getPluginManager().registerEvents(new ItemClickListener(),this);
         getCommand("nmenus").setExecutor(new NMenusCommand());
 
     }
