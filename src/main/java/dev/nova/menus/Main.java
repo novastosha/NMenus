@@ -4,6 +4,7 @@ import dev.nova.menus.commands.NMenusCommand;
 import dev.nova.menus.menu.MenuClickListener;
 import dev.nova.menus.menu.actions.manager.ActionManager;
 import dev.nova.menus.menu.manager.MenuManager;
+import dev.nova.menus.playerdata.PlayerListener;
 import dev.nova.menus.register.command.CCommand;
 import dev.nova.menus.utils.DebugMessenger;
 import me.godead.lilliputian.Dependency;
@@ -64,6 +65,8 @@ public class Main extends JavaPlugin {
         Bukkit.getConsoleSender().sendMessage("["+ ChatColor.YELLOW+"NMenus"+"§r] Loaded: "+loadedMenus+" menu(s)!");
         MenuManager.setLoaded(0);
         Bukkit.getPluginManager().registerEvents(new MenuClickListener(),this);
+        Bukkit.getPluginManager().registerEvents(new PlayerListener(),this);
+
         getCommand("nmenus").setExecutor(new NMenusCommand());
 
     }

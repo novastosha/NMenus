@@ -9,8 +9,8 @@
     "D:\\D\\_reborncraft\\! SharedLibs\\spigot-1.12.2.jar"
   ],
 
-  "corrupt_output_stream": true,
-  "corrupt_class_names": true,
+  "corrupt_output_stream": false,
+  "corrupt_class_names": false,
 
   "obfuscation": {
     "class_encrypt": {
@@ -31,7 +31,7 @@
     },
 
     "hide_code": {
-      "enable_transformer": true
+      "enable_transformer": false
     },
 
     "invoke_dynamic": {
@@ -39,19 +39,19 @@
     },
 
     "miscellaneous_obfuscation": {
-      "enable_transformer": true,
+      "enable_transformer": false,
 
       "invalid_annotation": true,
 
       "massive_source": true,
       "massive_signature": true,
 
-      "push_transient": true,
-      "push_varargs": true,
+      "push_transient": false,
+      "push_varargs": false,
 
-      "duplicate_variables": true,
+      "duplicate_variables": false,
 
-      "variable_descriptor": true,
+      "variable_descriptor": false,
 
       "variable_descriptor_list": [
         "Z", "C", "B", "S", "I", "F", "J", "D",
@@ -63,7 +63,7 @@
     },
 
     "number_obfuscation": {
-      "enable_transformer": true,
+      "enable_transformer": false,
 
       "execute_twice": true
     },
@@ -96,11 +96,11 @@
     },
 
     "shuffle_members": {
-      "enable_transformer": true
+      "enable_transformer": false
     },
 
     "string_encryption": {
-      "enable_transformer": true,
+      "enable_transformer": false,
 
       "type": "strong"
     }
@@ -124,6 +124,9 @@
     },
 
     "redudant": {
+      "enable_transformer": false
+    },
+    "redundant": {
       "enable_transformer": false
     }
   },

@@ -3,6 +3,7 @@ package dev.nova.menus.menu;
 import dev.nova.menus.menu.manager.MenuManager;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.inventory.*;
@@ -10,7 +11,7 @@ import org.bukkit.event.inventory.*;
 public class MenuClickListener implements Listener {
 
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGH)
     public void onInventoryClick(InventoryClickEvent event){
         for(Menu menu : MenuManager.MENUS) {
             if (menu.getInventoryType() != InventoryType.ANVIL) {
