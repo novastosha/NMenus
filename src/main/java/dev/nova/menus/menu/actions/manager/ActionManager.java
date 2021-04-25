@@ -10,10 +10,10 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.libs.jline.internal.InputStreamReader;
 import org.bukkit.plugin.Plugin;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.io.File;
@@ -22,18 +22,18 @@ import java.util.jar.JarFile;
 public class ActionManager {
 
     public static final ArrayList<RawAction> ACTIONS = new ArrayList<>(Arrays.asList(
-            new RawAction(CloseMenu.class,new ArrayList<>(Arrays.asList(new Pram(String.class, null,0)))),
-            new RawAction(ConnectToServer.class,new ArrayList<>(Arrays.asList(new Pram(String.class, null,0)))),
-            new RawAction(ConsoleExecuteCommand.class, new ArrayList<>(Arrays.asList(new Pram(String.class,"command",0),new Pram(String.class,null,1)))),
-            new RawAction(ExecuteCommandPlayer.class,new ArrayList<>(Arrays.asList(new Pram(String.class,"command",0),new Pram(String.class,null,1)))),
-            new RawAction(OpenMenu.class, new ArrayList<>(Arrays.asList(new Pram(String.class,"menuCodeName",0),new Pram(String.class,null,1)))),
-            new RawAction(SendJSONMessage.class, new ArrayList<>(Arrays.asList(new Pram(String.class,null,0),new Pram(ConfigurationSection.class,"config",1)))),
-            new RawAction(SendMessage.class, new ArrayList<>(Arrays.asList(new Pram(String.class,"message",1),new Pram(String.class,null,0)))),
-            new RawAction(Teleport.class, new ArrayList<>(Arrays.asList(new Pram(Location.class,"location",0),new Pram(String.class,null,1))))
+            new RawAction(dev.nova.menus.menu.actions.CloseMenu.class,new ArrayList<>(Arrays.asList(new Pram(String.class, null,0)))),
+            new RawAction(dev.nova.menus.menu.actions.ConnectToServer.class,new ArrayList<>(Arrays.asList(new Pram(String.class, null,0)))),
+            new RawAction(dev.nova.menus.menu.actions.ConsoleExecuteCommand.class, new ArrayList<>(Arrays.asList(new Pram(String.class,"command",0),new Pram(String.class,null,1)))),
+            new RawAction(dev.nova.menus.menu.actions.ExecuteCommandPlayer.class,new ArrayList<>(Arrays.asList(new Pram(String.class,"command",0),new Pram(String.class,null,1)))),
+            new RawAction(dev.nova.menus.menu.actions.OpenMenu.class, new ArrayList<>(Arrays.asList(new Pram(String.class,"menuCodeName",0),new Pram(String.class,null,1)))),
+            new RawAction(dev.nova.menus.menu.actions.SendJSONMessage.class, new ArrayList<>(Arrays.asList(new Pram(String.class,null,0),new Pram(ConfigurationSection.class,"config",1)))),
+            new RawAction(dev.nova.menus.menu.actions.SendMessage.class, new ArrayList<>(Arrays.asList(new Pram(String.class,"message",1),new Pram(String.class,null,0)))),
+            new RawAction(dev.nova.menus.menu.actions.Teleport.class, new ArrayList<>(Arrays.asList(new Pram(Location.class,"location",0),new Pram(String.class,null,1))))
 
     ));
 
-    public static boolean check(Class<? extends Action> aClass){
+    public static boolean check(Class<? extends dev.nova.menus.menu.actions.Action> aClass){
             try{
                 Field field = aClass.getDeclaredField("CODE");
                 field.setAccessible(true);

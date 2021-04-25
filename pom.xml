@@ -18,6 +18,10 @@
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+        <repository>
+            <id>NMS</id>
+            <url>https://repo.codemc.org/repository/nms/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -25,6 +29,12 @@
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.8.8-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.destroystokyo.paper</groupId>
+            <artifactId>paper</artifactId>
+            <version>1.12.2-R0.1-20190714.184445-253</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
