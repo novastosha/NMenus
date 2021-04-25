@@ -1,0 +1,20 @@
+Input: D:\IdeaProjects\NMenus\target\NMenus-blaub.jar
+Output: D:\IdeaProjects\NMenus\target\NMenus-radon.jar
+NumberObfuscation: Heavy
+StringEncryption:
+    Enabled: true
+    Mode: Heavy
+    Exclusions: []
+    StringPool: true
+FlowObfuscation: Heavy
+Dictionary: Spaces
+TrashClasses: 0
+Libraries:
+- D:\Program Files\Java\jdk1.8.0_281\jre\lib\rt.jar
+- D:\Program Files\Java\jdk1.8.0_281\jre\lib\jce.jar
+- D:\D\_reborncraft\! SharedLibs\spigot-1.8.8-R0.1-SNAPSHOT-latest.jar
+- D:\D\_reborncraft\! SharedLibs\spigot-1.12.2.jar
+Exclusions:
+- 'Renamer: dev.nova.menus.Main'
+- 'Renamer: dev/nova/menus/Main'
+- 'Renamer: dev/nova/menus/Main.class'
