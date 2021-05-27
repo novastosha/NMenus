@@ -37,7 +37,6 @@
             <version>1.12.2-R0.1-20190714.184445-253</version>
             <scope>provided</scope>
         </dependency>
-<<<<<<< HEAD
         <dependency>
             <groupId>com.github.godead</groupId>
             <artifactId>lilliputian</artifactId>
@@ -49,8 +48,6 @@
             <version>1.18.20</version>
             <scope>provided</scope>
         </dependency>
-=======
->>>>>>> parent of 883e3fd (BASIC obfuscation that took me all day to setup)
     </dependencies>
 
     <build>
