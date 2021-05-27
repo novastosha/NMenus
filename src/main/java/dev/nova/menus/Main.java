@@ -7,9 +7,6 @@ import dev.nova.menus.menu.manager.MenuManager;
 import dev.nova.menus.playerdata.PlayerListener;
 import dev.nova.menus.register.command.CCommand;
 import dev.nova.menus.utils.DebugMessenger;
-import me.godead.lilliputian.Dependency;
-import me.godead.lilliputian.Lilliputian;
-import me.godead.lilliputian.Repository;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.SimpleCommandMap;
@@ -32,7 +29,6 @@ public class Main extends JavaPlugin {
     private static Main INSTANCE;
     private static SimpleCommandMap scm;
     private SimplePluginManager spm;
-    private static Lilliputian lilliputian;
 
     @Override
     public void onEnable() {
@@ -92,16 +88,5 @@ public class Main extends JavaPlugin {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public void onLoad() {
-        lilliputian = new Lilliputian(this);
-        lilliputian.getDependencyBuilder()
-                .addDependency(new Dependency(
-                        Repository.MAVENCENTRAL,
-                        "com.squareup.okhttp3",
-                        "okhttp",
-                        "4.10.0-RC1"))
-                .loadDependencies();
     }
 }

@@ -5,6 +5,3 @@ description: The plugin that makes it easier to make menus!
 commands:
   nmenus:
     description: Main command for the plugin!
-permissions:
-  ⠀:
-    description: "%%__POLYMART__%%"

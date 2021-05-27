@@ -22,10 +22,6 @@
             <id>NMS</id>
             <url>https://repo.codemc.org/repository/nms/</url>
         </repository>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
     </repositories>
 
     <dependencies>
@@ -41,6 +37,7 @@
             <version>1.12.2-R0.1-20190714.184445-253</version>
             <scope>provided</scope>
         </dependency>
+<<<<<<< HEAD
         <dependency>
             <groupId>com.github.godead</groupId>
             <artifactId>lilliputian</artifactId>
@@ -52,6 +49,8 @@
             <version>1.18.20</version>
             <scope>provided</scope>
         </dependency>
+=======
+>>>>>>> parent of 883e3fd (BASIC obfuscation that took me all day to setup)
     </dependencies>
 
     <build>
@@ -86,51 +85,6 @@
                     <source>8</source>
                     <target>8</target>
                 </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <version>1.8</version>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                        <configuration>
-                            <tasks>
-                                <property refid="maven.compile.classpath" name="mvn.classpath"></property>
-                                <taskdef name="yguard" classname="com.yworks.yguard.YGuardTask"
-                                         classpath="lib/yguard.jar"/>
-                                <yguard>
-                                    <inoutpair in="${project.build.directory}/NMenus-${project.version}.jar"
-                                               out="${project.build.directory}/NMenus-${project.version}.jar" />
-                                    <rename logfile="${project.build.directory}/yguard.log.xml"
-                                            replaceClassNameStrings="true">
-                                        <property name="obfuscation-prefix" value="nigger"/>
-                                        <keep>
-                                            <class classes="public" methods="public" fields="protected">
-                                                <patternset>
-                                                    <include name="dev.nova.menus.Main"></include>
-                                                </patternset>
-                                            </class>
-                                            <class classes="protected" methods="protected" fields="public">
-                                                <patternset>
-                                                    <include name="dev.nova.menus.menu.actions.*"></include>
-                                                    <exclude name="dev.nova.menus.menu.actions.Action"></exclude>
-                                                    <exclude name="dev.nova.menus.menu.actions.base.*"></exclude>
-                                                    <exclude name="dev.nova.menus.menu.actions.manager.*"></exclude>
-                                                </patternset>
-                                            </class>
-                                        </keep>
-                                    </rename>
-                                    <externalclasses>
-                                        <pathelement path="${mvn.classpath}" />
-                                    </externalclasses>
-                                </yguard>
-                            </tasks>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
         <resources>
